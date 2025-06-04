@@ -7,7 +7,7 @@
         <div class="bg-white shadow rounded-lg p-6">
           <h2 class="text-lg font-semibold mb-2">Vendors</h2>
           <p class="text-gray-600">Create, approve, and manage vendor accounts.</p>
-          <a href="/admin/dashboard" class="text-indigo-600 mt-2 inline-block">Go to Vendor Management</a>
+          <a href="/admin/vendors" class="text-indigo-600 mt-2 inline-block">Go to Vendor Management</a>
         </div>
 
         <div class="bg-white shadow rounded-lg p-6">
