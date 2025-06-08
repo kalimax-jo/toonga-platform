@@ -173,6 +173,7 @@ Route::get('/flights', function () {
     return Inertia::render('Public/FlightsPage');
 });
 
+
 Route::get('/hotels', function () {
     return Inertia::render('Public/HotelsPage');
 });
@@ -188,6 +189,7 @@ Route::get('/food', function () {
 Route::get('/furniture', function () {
     return Inertia::render('Public/FurniturePage');
 });
+
 
 Route::get('/electronics', function () {
     $products = \App\Models\Product::with('category', 'vendor')
