@@ -13,12 +13,7 @@ use App\Http\Controllers\ProfileController;
 
 // 🌐 Public Homepage
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return Inertia::render('Public/WelcomePage');
 });
 
 // 🔐 Authenticated Dashboard
@@ -176,6 +171,35 @@ Route::middleware(['auth'])->group(function () {
 
 Route::get('/flights', function () {
     return Inertia::render('Public/FlightsPage');
+});
+
+Route::get('/hotels', function () {
+    return Inertia::render('Public/HotelsPage');
+});
+
+Route::get('/cars', function () {
+    return Inertia::render('Public/CarsPage');
+});
+
+Route::get('/food', function () {
+    return Inertia::render('Public/FoodPage');
+});
+
+Route::get('/furniture', function () {
+    return Inertia::render('Public/FurniturePage');
+});
+
+Route::get('/electronics', function () {
+    $products = \App\Models\Product::with('category', 'vendor')
+        ->whereHas('category.type', function ($query) {
+            $query->where('name', 'Electronics');
+        })
+        ->where('is_approved', true)
+        ->get();
+
+    return Inertia::render('Public/ElectronicsPage', [
+        'products' => $products,
+    ]);
 });
 
 
