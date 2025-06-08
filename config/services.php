@@ -29,11 +29,12 @@ return [
     ],
 
     'flutterwave' => [
-    'public_key' => env('FLW_PUBLIC_KEY'),
-    'secret_key' => env('FLW_SECRET_KEY'),
-    'encryption_key' => env('FLW_ENCRYPTION_KEY'),
-    'subaccount_main' => env('FLW_SUBACCOUNT_MAIN'),
-],
+        'public_key' => env('FLW_PUBLIC_KEY'),
+        'secret_key' => env('FLW_SECRET_KEY'),
+        'encryption_key' => env('FLW_ENCRYPTION_KEY'),
+        'subaccount_main' => env('FLW_SUBACCOUNT_MAIN'),
+        'base_url' => env('FLW_BASE_URL', 'https://api.flutterwave.com'),
+    ],
 
 
     'slack' => [
