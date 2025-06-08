@@ -28,6 +28,14 @@ return [
         'key' => env('RESEND_KEY'),
     ],
 
+    'flutterwave' => [
+    'public_key' => env('FLW_PUBLIC_KEY'),
+    'secret_key' => env('FLW_SECRET_KEY'),
+    'encryption_key' => env('FLW_ENCRYPTION_KEY'),
+    'subaccount_main' => env('FLW_SUBACCOUNT_MAIN'),
+],
+
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

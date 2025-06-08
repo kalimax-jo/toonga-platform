@@ -4,6 +4,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Models\User;
 use App\Models\Category;
+use App\Models\Product;
+use App\Http\Controllers\Api\CategoryTypeController;
+use App\Http\Controllers\Api\Vendor\ProductController;
+use App\Http\Controllers\Api\FlightSearchController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,12 +24,10 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 // 📦 Vendor Management APIs
 
-// Get all vendors with categories
 Route::get('/vendors', function () {
     return User::with('categories')->where('role', 'vendor')->get();
 });
 
-// Create a new vendor
 Route::post('/vendors', function (Request $request) {
     $validated = $request->validate([
         'name' => 'required|string|max:255',
@@ -50,7 +52,6 @@ Route::post('/vendors', function (Request $request) {
     return $vendor->load('categories');
 });
 
-// Update vendor
 Route::put('/vendors/{id}', function (Request $request, $id) {
     $vendor = User::where('role', 'vendor')->findOrFail($id);
 
@@ -75,7 +76,6 @@ Route::put('/vendors/{id}', function (Request $request, $id) {
     return $vendor->load('categories');
 });
 
-// Delete vendor
 Route::delete('/vendors/{id}', function ($id) {
     $vendor = User::where('role', 'vendor')->findOrFail($id);
     $vendor->categories()->detach();
@@ -85,21 +85,19 @@ Route::delete('/vendors/{id}', function ($id) {
 });
 
 // 🗂️ Category Management
-
-// Get all categories
 Route::get('/categories', function () {
-    return Category::all();
+    return Category::with('type')->get();
 });
 
-// Create new category
 Route::post('/categories', function (Request $request) {
     $validated = $request->validate([
         'name' => 'required|string|max:255|unique:categories',
+        'category_type_id' => 'required|exists:category_types,id',
     ]);
+
     return Category::create($validated);
 });
 
-// Update category
 Route::put('/categories/{id}', function (Request $request, $id) {
     $category = Category::findOrFail($id);
     $category->update($request->validate([
@@ -108,12 +106,43 @@ Route::put('/categories/{id}', function (Request $request, $id) {
     return $category;
 });
 
-// Delete category
 Route::delete('/categories/{id}', function ($id) {
     $category = Category::findOrFail($id);
     $category->delete();
     return response()->json(['message' => 'Category deleted']);
 });
 
+Route::get('/categories/{id}', function ($id) {
+    return Category::with('type')->findOrFail($id);
+});
+
+// 📦 Products
+Route::get('/products', function () {
+    return Product::with('category', 'vendor')->get();
+});
+
+Route::get('/category-types', [CategoryTypeController::class, 'index']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/vendor/products', [ProductController::class, 'store']);
+});
+
+
+Route::get('/flight-search', [FlightSearchController::class, 'search']);
+use App\Http\Controllers\Api\CartController;
+Route::middleware(['web', 'auth'])->post('/cart/flight', [CartController::class, 'addFlight']);
+
+use App\Http\Controllers\FlutterwavePaymentController;
+
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/flights/pay', [FlutterwavePaymentController::class, 'initiate'])->name('flights.pay');
+    Route::get('/flights/payment/callback', [FlutterwavePaymentController::class, 'callback'])->name('flutterwave.callback');
+});
+
+
+
 // 🚀 Test API
 Route::get('/test-api', fn () => response()->json(['message' => 'API is working']));
+Route::get('/test-flight-search', [\App\Http\Controllers\Api\TestFlightController::class, 'search']);
+

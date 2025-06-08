@@ -12,8 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-        $table->string('subaccount_id')->nullable();
-    });
+            if (!Schema::hasColumn('users', 'subaccount_id')) {
+                $table->string('subaccount_id')->nullable();
+            }
+        });
     }
 
     /**
@@ -21,8 +23,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-       Schema::table('users', function (Blueprint $table) {
-        $table->dropColumn('subaccount_id');
-    });
+        Schema::table('users', function (Blueprint $table) {
+            if (Schema::hasColumn('users', 'subaccount_id')) {
+                $table->dropColumn('subaccount_id');
+            }
+        });
     }
 };

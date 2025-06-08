@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "80efe4b3b82c9c7acdd39b013483f9ae",
+    "content-hash": "21c8386ae059581ee9f086453347d6d3",
     "packages": [
         {
             "name": "brick/math",
@@ -688,14 +688,18 @@
                     "forward-command": false
                 }
             },
+           
+
+
             "autoload": {
-                "files": [
-                    "src/functions_include.php"
-                ],
-                "psr-4": {
-                    "GuzzleHttp\\": "src/"
-                }
-            },
+  "psr-4": {
+    "App\\": "app/"
+  },
+  "files": [
+    "app/Helpers/CurrencyHelper.php"
+  ]
+},
+
             "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"

@@ -12,10 +12,17 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'first_name',
+        'last_name',
         'email',
+        'phone',
+        'date_of_birth',
+        'nationality',
         'password',
         'role',
         'is_approved',
+        'carrier_code',
+        'category_type_id',
         'subaccount_id',
     ];
 
@@ -30,18 +37,28 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_approved' => 'boolean',
+            'date_of_birth' => 'date',
         ];
     }
 
-    // ✅ Vendor has many products
+    // Relationships
     public function products()
     {
         return $this->hasMany(Product::class, 'vendor_id');
     }
 
-    // ✅ Vendor belongs to many categories (via pivot table)
     public function categories()
     {
         return $this->belongsToMany(Category::class);
+    }
+
+    public function flightBookings()
+    {
+        return $this->hasMany(FlightBooking::class);
+    }
+
+    public function miles()
+    {
+        return $this->hasMany(Miles::class);
     }
 }

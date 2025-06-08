@@ -10,18 +10,23 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up()
-{
-    Schema::table('users', function (Blueprint $table) {
-        $table->boolean('is_approved')->default(false);
-    });
-}
+    {
+        if (!Schema::hasColumn('users', 'is_approved')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->boolean('is_approved')->default(false)->after('role');
+            });
+        }
+    }
+
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            //
-        });
+        if (Schema::hasColumn('users', 'is_approved')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->dropColumn('is_approved');
+            });
+        }
     }
 };

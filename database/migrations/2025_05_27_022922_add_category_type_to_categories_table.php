@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-    $table->boolean('is_approved')->default(false)->after('role');
-        });
+       Schema::table('categories', function (Blueprint $table) {
+        $table->foreignId('category_type_id')->nullable()->constrained('category_types');
+    });
     }
 
     /**
@@ -21,7 +21,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table('categories', function (Blueprint $table) {
             //
         });
     }

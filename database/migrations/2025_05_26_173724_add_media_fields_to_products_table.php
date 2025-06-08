@@ -11,11 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasColumn('users', 'role')) {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('role')->default('client');
+       Schema::table('products', function (Blueprint $table) {
+            $table->json('images')->nullable();
+            $table->string('video')->nullable();
         });
-    }
     }
 
     /**
@@ -23,8 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-         Schema::table('users', function (Blueprint $table) {
-        $table->dropColumn('role');
-    });
+        Schema::table('products', function (Blueprint $table) {
+            $table->dropColumn(['images', 'video']);
+        });
     }
 };
