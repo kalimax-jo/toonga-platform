@@ -132,6 +132,7 @@ class PaymentController extends Controller
         ]);
 
         // Make request to Flutterwave
+
         try {
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
@@ -145,6 +146,11 @@ class PaymentController extends Controller
 
             return back()->with('error', 'Unable to connect to payment gateway. Please try again later.');
         }
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
+            'Content-Type' => 'application/json'
+        ])->post(config('services.flutterwave.base_url') . '/v3/payments', $paymentData);
+
 
         if ($response->successful()) {
             $data = $response->json();
@@ -201,6 +207,7 @@ class PaymentController extends Controller
 
         if ($status === 'successful') {
             // Verify payment with Flutterwave
+
             try {
                 $response = Http::withHeaders([
                     'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
@@ -213,6 +220,11 @@ class PaymentController extends Controller
 
                 return redirect()->route('bookings.failed')->with('error', 'Unable to verify payment. Please try again.');
             }
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
+            ])->get(config('services.flutterwave.base_url') . "/v3/transactions/{$transactionId}/verify");
+
 
             if ($response->successful()) {
                 $data = $response->json();
