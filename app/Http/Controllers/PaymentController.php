@@ -10,6 +10,7 @@ use App\Models\FlightBooking;
 use App\Models\BookingPayment;
 use App\Models\Miles;
 use App\Models\User;
+use App\Helpers\CurrencyHelper;
 use Inertia\Inertia;
 
 class PaymentController extends Controller
@@ -62,13 +63,19 @@ class PaymentController extends Controller
             ]);
         }
 
-        // Prepare split payment configuration
+        // Prepare split payment configuration based on commission percentage
         $splitConfig = [];
         if ($vendor && $vendor->subaccount_id) {
             $splitConfig = [
                 [
+                    'id' => config('services.flutterwave.subaccount_main'),
+                    'transaction_charge_type' => 'percentage',
+                    'transaction_charge' => $commissionPercentage
+                ],
+                [
                     'id' => $vendor->subaccount_id,
-                    'transaction_split_ratio' => (100 - $commissionPercentage)
+                    'transaction_charge_type' => 'percentage',
+                    'transaction_charge' => 100 - $commissionPercentage
                 ]
             ];
             
@@ -86,14 +93,29 @@ class PaymentController extends Controller
             ]);
         }
 
-        // Convert to RWF if needed (since Flutterwave account is RWF)
+        // Convert to RWF using live exchange rates when necessary
         $amountRWF = $booking->total_price_local;
-        $currency = $booking->currency_used;
+        $currency = 'RWF';
 
-        // If booking is in EUR, convert to RWF
-        if ($currency === 'EUR') {
-            $amountRWF = $booking->total_price_local * $booking->exchange_rate; // Convert to RWF
-            $currency = 'RWF';
+        if ($booking->currency_used !== 'RWF') {
+            try {
+                $converted = CurrencyHelper::convert(
+                    $booking->total_price_local,
+                    $booking->currency_used,
+                    'RWF'
+                );
+
+                if ($converted !== null) {
+                    $amountRWF = round($converted, 2);
+                }
+            } catch (\Exception $e) {
+                Log::error('Currency conversion failed', [
+                    'booking' => $booking->booking_reference,
+                    'message' => $e->getMessage(),
+                ]);
+                // fallback to stored local amount without conversion
+                $amountRWF = $booking->total_price_local;
+            }
         }
 
         // Prepare Flutterwave payment data
