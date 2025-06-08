@@ -165,7 +165,7 @@ class PaymentController extends Controller
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
                 'Content-Type' => 'application/json'
-            ])->post('https://api.flutterwave.com/v3/payments', $paymentData);
+            ])->post(config('services.flutterwave.base_url') . '/v3/payments', $paymentData);
         } catch (ConnectionException $e) {
             Log::error('Connection error while initiating payment', [
                 'booking' => $booking->booking_reference,
@@ -174,10 +174,6 @@ class PaymentController extends Controller
 
             return back()->with('error', 'Unable to connect to payment gateway. Please try again later.');
         }
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
-            'Content-Type' => 'application/json'
-        ])->post(config('services.flutterwave.base_url') . '/v3/payments', $paymentData);
 
 
         if ($response->successful()) {
