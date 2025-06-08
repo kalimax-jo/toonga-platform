@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\ConnectionException;
 use App\Models\FlightBooking;
 use App\Models\BookingPayment;
 use App\Models\Miles;
@@ -131,10 +132,19 @@ class PaymentController extends Controller
         ]);
 
         // Make request to Flutterwave
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
-            'Content-Type' => 'application/json'
-        ])->post('https://api.flutterwave.com/v3/payments', $paymentData);
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
+                'Content-Type' => 'application/json'
+            ])->post('https://api.flutterwave.com/v3/payments', $paymentData);
+        } catch (ConnectionException $e) {
+            Log::error('Connection error while initiating payment', [
+                'booking' => $booking->booking_reference,
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Unable to connect to payment gateway. Please try again later.');
+        }
 
         if ($response->successful()) {
             $data = $response->json();
@@ -191,9 +201,18 @@ class PaymentController extends Controller
 
         if ($status === 'successful') {
             // Verify payment with Flutterwave
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
-            ])->get("https://api.flutterwave.com/v3/transactions/{$transactionId}/verify");
+            try {
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
+                ])->get("https://api.flutterwave.com/v3/transactions/{$transactionId}/verify");
+            } catch (ConnectionException $e) {
+                Log::error('Connection error while verifying payment', [
+                    'tx_ref' => $transactionId,
+                    'message' => $e->getMessage(),
+                ]);
+
+                return redirect()->route('bookings.failed')->with('error', 'Unable to verify payment. Please try again.');
+            }
 
             if ($response->successful()) {
                 $data = $response->json();
