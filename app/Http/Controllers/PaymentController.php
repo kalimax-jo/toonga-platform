@@ -10,6 +10,7 @@ use App\Models\FlightBooking;
 use App\Models\BookingPayment;
 use App\Models\Miles;
 use App\Models\User;
+use App\Helpers\CurrencyHelper;
 use Inertia\Inertia;
 
 class PaymentController extends Controller
@@ -92,14 +93,35 @@ class PaymentController extends Controller
             ]);
         }
 
-        // Convert to RWF if needed (since Flutterwave account is RWF)
+        // Convert to RWF using live exchange rates when necessary
         $amountRWF = $booking->total_price_local;
-        $currency = $booking->currency_used;
+        $currency = 'RWF';
+
+        if ($booking->currency_used !== 'RWF') {
+            try {
+                $converted = CurrencyHelper::convert(
+                    $booking->total_price_local,
+                    $booking->currency_used,
+                    'RWF'
+                );
+
+                if ($converted !== null) {
+                    $amountRWF = round($converted, 2);
+                }
+            } catch (\Exception $e) {
+                Log::error('Currency conversion failed', [
+                    'booking' => $booking->booking_reference,
+                    'message' => $e->getMessage(),
+                ]);
+                // fallback to stored local amount without conversion
+                $amountRWF = $booking->total_price_local;
+            }
 
         // Convert any non-RWF currency using stored exchange rate
         if ($currency !== 'RWF') {
             $amountRWF = $booking->total_price_local * $booking->exchange_rate;
             $currency = 'RWF';
+
         }
 
         // Prepare Flutterwave payment data
