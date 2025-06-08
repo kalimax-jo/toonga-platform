@@ -62,13 +62,19 @@ class PaymentController extends Controller
             ]);
         }
 
-        // Prepare split payment configuration
+        // Prepare split payment configuration based on commission percentage
         $splitConfig = [];
         if ($vendor && $vendor->subaccount_id) {
             $splitConfig = [
                 [
+                    'id' => config('services.flutterwave.subaccount_main'),
+                    'transaction_charge_type' => 'percentage',
+                    'transaction_charge' => $commissionPercentage
+                ],
+                [
                     'id' => $vendor->subaccount_id,
-                    'transaction_split_ratio' => (100 - $commissionPercentage)
+                    'transaction_charge_type' => 'percentage',
+                    'transaction_charge' => 100 - $commissionPercentage
                 ]
             ];
             
@@ -90,9 +96,9 @@ class PaymentController extends Controller
         $amountRWF = $booking->total_price_local;
         $currency = $booking->currency_used;
 
-        // If booking is in EUR, convert to RWF
-        if ($currency === 'EUR') {
-            $amountRWF = $booking->total_price_local * $booking->exchange_rate; // Convert to RWF
+        // Convert any non-RWF currency using stored exchange rate
+        if ($currency !== 'RWF') {
+            $amountRWF = $booking->total_price_local * $booking->exchange_rate;
             $currency = 'RWF';
         }
 
