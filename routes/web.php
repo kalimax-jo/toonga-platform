@@ -178,6 +178,19 @@ Route::get('/flights', function () {
     return Inertia::render('Public/FlightsPage');
 });
 
+Route::get('/electronics', function () {
+    $products = \App\Models\Product::with('category', 'vendor')
+        ->whereHas('category.type', function ($query) {
+            $query->where('name', 'Electronics');
+        })
+        ->where('is_approved', true)
+        ->get();
+
+    return Inertia::render('Public/ElectronicsPage', [
+        'products' => $products,
+    ]);
+});
+
 
 
 
