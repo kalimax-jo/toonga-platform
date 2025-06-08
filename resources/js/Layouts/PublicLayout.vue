@@ -3,16 +3,21 @@
     <header class="bg-white shadow-sm sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
         <h1 class="text-2xl font-bold text-indigo-600">Toonga</h1>
-        <nav class="space-x-6">
-          <a href="/" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Home</a>
-          <a href="/flights" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Flights</a>
-          <a href="/hotels" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Hotels</a>
-          <a href="/cars" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Car Rentals</a>
-          <a href="/electronics" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Electronics</a>
-          <a href="/food" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Food & Beverage</a>
-          <a href="/furniture" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Furniture</a>
-          <a href="/login" class="text-sm font-medium text-indigo-600">Login</a>
-        </nav>
+        <div class="flex items-center space-x-6">
+          <nav class="space-x-6">
+            <a href="/" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Home</a>
+            <a href="/flights" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Flights</a>
+            <a href="/hotels" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Hotels</a>
+            <a href="/cars" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Car Rentals</a>
+            <a href="/electronics" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Electronics</a>
+            <a href="/food" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Food & Beverage</a>
+            <a href="/furniture" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Furniture</a>
+          </nav>
+          <span v-if="$page.props.auth.user" class="text-sm font-medium text-gray-700">
+            Welcome {{ $page.props.auth.user.name }}
+          </span>
+          <a v-else href="/login" class="text-sm font-medium text-indigo-600">Login</a>
+        </div>
       </div>
     </header>
 
