@@ -82,7 +82,7 @@ class FlutterwavePaymentController extends Controller
         ];
 
         $response = Http::withToken(config('services.flutterwave.secret_key'))
-            ->post('https://api.flutterwave.com/v3/payments', $payload);
+            ->post(config('services.flutterwave.base_url') . '/v3/payments', $payload);
 
         if ($response->successful() && $response['status'] === 'success') {
             session()->put('pending_miles', [
