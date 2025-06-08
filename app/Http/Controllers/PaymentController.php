@@ -116,6 +116,12 @@ class PaymentController extends Controller
                 // fallback to stored local amount without conversion
                 $amountRWF = $booking->total_price_local;
             }
+
+        // Convert any non-RWF currency using stored exchange rate
+        if ($currency !== 'RWF') {
+            $amountRWF = $booking->total_price_local * $booking->exchange_rate;
+            $currency = 'RWF';
+
         }
 
         // Prepare Flutterwave payment data
