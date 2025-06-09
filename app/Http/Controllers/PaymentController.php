@@ -5,12 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Http\Client\ConnectionException;
 use App\Models\FlightBooking;
 use App\Models\BookingPayment;
 use App\Models\Miles;
 use App\Models\User;
-use App\Helpers\CurrencyHelper;
 use Inertia\Inertia;
 
 class PaymentController extends Controller
@@ -63,19 +61,13 @@ class PaymentController extends Controller
             ]);
         }
 
-        // Prepare split payment configuration based on commission percentage
+        // Prepare split payment configuration
         $splitConfig = [];
         if ($vendor && $vendor->subaccount_id) {
             $splitConfig = [
                 [
-                    'id' => config('services.flutterwave.subaccount_main'),
-                    'transaction_charge_type' => 'percentage',
-                    'transaction_charge' => $commissionPercentage
-                ],
-                [
                     'id' => $vendor->subaccount_id,
-                    'transaction_charge_type' => 'percentage',
-                    'transaction_charge' => 100 - $commissionPercentage
+                    'transaction_split_ratio' => (100 - $commissionPercentage)
                 ]
             ];
             
@@ -93,35 +85,14 @@ class PaymentController extends Controller
             ]);
         }
 
-        // Convert to RWF using live exchange rates when necessary
+        // Convert to RWF if needed (since Flutterwave account is RWF)
         $amountRWF = $booking->total_price_local;
-        $currency = 'RWF';
+        $currency = $booking->currency_used;
 
-        if ($booking->currency_used !== 'RWF') {
-            try {
-                $converted = CurrencyHelper::convert(
-                    $booking->total_price_local,
-                    $booking->currency_used,
-                    'RWF'
-                );
-
-                if ($converted !== null) {
-                    $amountRWF = round($converted, 2);
-                }
-            } catch (\Exception $e) {
-                Log::error('Currency conversion failed', [
-                    'booking' => $booking->booking_reference,
-                    'message' => $e->getMessage(),
-                ]);
-                // fallback to stored local amount without conversion
-                $amountRWF = $booking->total_price_local;
-            }
-
-        // Convert any non-RWF currency using stored exchange rate
-        if ($currency !== 'RWF') {
-            $amountRWF = $booking->total_price_local * $booking->exchange_rate;
+        // If booking is in EUR, convert to RWF
+        if ($currency === 'EUR') {
+            $amountRWF = $booking->total_price_local * $booking->exchange_rate; // Convert to RWF
             $currency = 'RWF';
-
         }
 
         // Prepare Flutterwave payment data
@@ -160,21 +131,10 @@ class PaymentController extends Controller
         ]);
 
         // Make request to Flutterwave
-
-        try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
-                'Content-Type' => 'application/json'
-            ])->post(config('services.flutterwave.base_url') . '/v3/payments', $paymentData);
-        } catch (ConnectionException $e) {
-            Log::error('Connection error while initiating payment', [
-                'booking' => $booking->booking_reference,
-                'message' => $e->getMessage(),
-            ]);
-
-            return back()->with('error', 'Unable to connect to payment gateway. Please try again later.');
-        }
-
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
+            'Content-Type' => 'application/json'
+        ])->post('https://api.flutterwave.com/v3/payments', $paymentData);
 
         if ($response->successful()) {
             $data = $response->json();
@@ -231,24 +191,9 @@ class PaymentController extends Controller
 
         if ($status === 'successful') {
             // Verify payment with Flutterwave
-
-            try {
-                $response = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
-                ])->get("https://api.flutterwave.com/v3/transactions/{$transactionId}/verify");
-            } catch (ConnectionException $e) {
-                Log::error('Connection error while verifying payment', [
-                    'tx_ref' => $transactionId,
-                    'message' => $e->getMessage(),
-                ]);
-
-                return redirect()->route('bookings.failed')->with('error', 'Unable to verify payment. Please try again.');
-            }
-
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
-            ])->get(config('services.flutterwave.base_url') . "/v3/transactions/{$transactionId}/verify");
-
+            ])->get("https://api.flutterwave.com/v3/transactions/{$transactionId}/verify");
 
             if ($response->successful()) {
                 $data = $response->json();
