@@ -85,9 +85,15 @@ const getDefaultImage = (type) => {
   return images[type] || images.product
 }
 
+const conversionRates = { USD: 1250, EUR: 1150 }
 const formatPrice = (price, currency = 'RWF') => {
   const symbols = { RWF: 'Rwf', USD: '$', EUR: '€' }
-  return `${symbols[currency] || currency} ${price?.toLocaleString() || 0}`
+  if (currency !== 'RWF') {
+    const rate = conversionRates[currency] || 1
+    price = price * rate
+    currency = 'RWF'
+  }
+  return `${symbols[currency] || currency} ${Math.round(price).toLocaleString()}`
 }
 </script>
 

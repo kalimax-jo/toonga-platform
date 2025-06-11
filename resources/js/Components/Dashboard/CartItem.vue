@@ -80,8 +80,14 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString()
 }
 
+const conversionRates = { USD: 1250, EUR: 1150 }
 const formatCurrency = (amount, currency = 'RWF') => {
   const symbols = { RWF: 'Rwf', USD: '$', EUR: '€' }
-  return `${symbols[currency]}${amount.toLocaleString()}`
+  if (currency !== 'RWF') {
+    const rate = conversionRates[currency] || 1
+    amount = amount * rate
+    currency = 'RWF'
+  }
+  return `${symbols[currency]}${Math.round(amount).toLocaleString()}`
 }
 </script>

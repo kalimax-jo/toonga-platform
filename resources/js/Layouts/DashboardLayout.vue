@@ -90,7 +90,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { BellIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 import SidebarLink from '@/Components/Dashboard/SidebarLink.vue'
@@ -129,12 +129,12 @@ const props = defineProps({
 
 const showUserMenu = ref(false)
 
-const sidebarItems = [
+const sidebarItems = computed(() => [
   { route: '/dashboard', icon: 'home', label: 'Dashboard', count: null },
-  { route: '/dashboard/cart', icon: 'shopping-cart', label: 'Shopping Cart', count: 0 },
+  { route: '/dashboard/cart', icon: 'shopping-cart', label: 'Shopping Cart', count: props.stats?.cartItems || 0 },
   { route: '/dashboard/orders', icon: 'archive-box', label: 'My Orders', count: null },
   { route: '/dashboard/miles', icon: 'star', label: 'Miles & Rewards', count: null },
-  { route: '/dashboard/wishlist', icon: 'heart', label: 'Wishlist', count: null },
+  { route: '/dashboard/wishlist', icon: 'heart', label: 'My Wishlist', count: props.stats?.wishlistItems || 0 },
   { route: '/dashboard/profile', icon: 'user', label: 'Profile & Settings', count: null }
-]
+])
 </script>

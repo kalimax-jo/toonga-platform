@@ -12,13 +12,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Seed a test user
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
-
-        // 👉 Add this line to run your CategoryTypeSeeder
         $this->call([
             CategoryTypeSeeder::class,
         ]);

@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use App\Models\FlightBooking;
 use App\Models\Miles;
 use App\Models\User;
+use App\Models\WishlistItem;
 
 class DashboardController extends Controller
 {
@@ -66,6 +67,7 @@ class DashboardController extends Controller
                 'totalOrders' => $totalOrders,
                 'availableMiles' => $availableMiles,
                 'cartItems' => $this->getCartItemsCount($user->id),
+                'wishlistItems' => $this->getWishlistItemsCount($user->id),
                 'activeBookings' => $activeBookings
             ],
             'recentOrders' => $recentOrders,
@@ -95,6 +97,7 @@ class DashboardController extends Controller
                 'totalOrders' => FlightBooking::where('user_id', $user->id)->count(),
                 'availableMiles' => $this->getAvailableMiles($user->id),
                 'cartItems' => count($cartItems),
+                'wishlistItems' => $this->getWishlistItemsCount($user->id),
                 'activeBookings' => FlightBooking::where('user_id', $user->id)
                     ->whereIn('status', ['confirmed', 'pending'])
                     ->count()
@@ -118,6 +121,7 @@ class DashboardController extends Controller
                 'totalOrders' => FlightBooking::where('user_id', $user->id)->count(),
                 'availableMiles' => $this->getAvailableMiles($user->id),
                 'cartItems' => $this->getCartItemsCount($user->id),
+                'wishlistItems' => $this->getWishlistItemsCount($user->id),
                 'activeBookings' => FlightBooking::where('user_id', $user->id)
                     ->whereIn('status', ['confirmed', 'pending'])
                     ->count()
@@ -154,6 +158,15 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard/Miles', [
             'user' => $user,
+            'stats' => [
+                'totalOrders' => FlightBooking::where('user_id', $user->id)->count(),
+                'availableMiles' => $this->getAvailableMiles($user->id),
+                'cartItems' => $this->getCartItemsCount($user->id),
+                'wishlistItems' => $this->getWishlistItemsCount($user->id),
+                'activeBookings' => FlightBooking::where('user_id', $user->id)
+                    ->whereIn('status', ['confirmed', 'pending'])
+                    ->count()
+            ],
             'milesData' => [
                 'available' => $earnedMiles - $redeemedMiles,
                 'earned' => $earnedMiles,
@@ -167,16 +180,39 @@ class DashboardController extends Controller
 
     public function wishlist()
     {
+        $user = auth()->user();
+        $items = WishlistItem::where('user_id', $user->id)->get();
+
         return Inertia::render('Dashboard/Wishlist', [
-            'user' => auth()->user(),
-            'wishlistItems' => []
+            'user' => $user,
+            'wishlistItems' => $items,
+            'stats' => [
+                'totalOrders' => FlightBooking::where('user_id', $user->id)->count(),
+                'availableMiles' => $this->getAvailableMiles($user->id),
+                'cartItems' => $this->getCartItemsCount($user->id),
+                'wishlistItems' => $this->getWishlistItemsCount($user->id),
+                'activeBookings' => FlightBooking::where('user_id', $user->id)
+                    ->whereIn('status', ['confirmed', 'pending'])
+                    ->count()
+            ]
         ]);
     }
 
     public function profile()
     {
+        $user = auth()->user();
+
         return Inertia::render('Dashboard/Profile', [
-            'user' => auth()->user()
+            'user' => $user,
+            'stats' => [
+                'totalOrders' => FlightBooking::where('user_id', $user->id)->count(),
+                'availableMiles' => $this->getAvailableMiles($user->id),
+                'cartItems' => $this->getCartItemsCount($user->id),
+                'wishlistItems' => $this->getWishlistItemsCount($user->id),
+                'activeBookings' => FlightBooking::where('user_id', $user->id)
+                    ->whereIn('status', ['confirmed', 'pending'])
+                    ->count()
+            ]
         ]);
     }
 
@@ -216,8 +252,12 @@ class DashboardController extends Controller
                     'type' => 'flight',
                     'title' => $this->getFlightTitle($booking),
                     'description' => $this->getFlightDescription($booking),
-                    'price' => $booking->total_amount,
-                    'currency' => $booking->currency_used ?: 'RWF',
+                    'price' => $this->convertToRwf(
+                        $booking->total_price_local,
+                        $booking->currency_used,
+                        $booking->exchange_rate
+                    ),
+                    'currency' => 'RWF',
                     'quantity' => 1,
                     'image' => null,
                     'details' => [
@@ -282,6 +322,18 @@ class DashboardController extends Controller
             // $count += ProductOrder::where('user_id', $userId)->whereIn('status', ['pending', 'unpaid'])->count();
             
             return $count;
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Get count of wishlist items
+     */
+    private function getWishlistItemsCount($userId)
+    {
+        try {
+            return WishlistItem::where('user_id', $userId)->count();
         } catch (\Exception $e) {
             return 0;
         }
@@ -382,5 +434,21 @@ class DashboardController extends Controller
         } catch (\Exception $e) {
             return 0;
         }
+    }
+
+    /**
+     * Convert an amount to RWF using the provided currency and rate.
+     */
+    private function convertToRwf($amount, $currency, $rate)
+    {
+        if ($currency === 'RWF' || !$currency) {
+            return $amount;
+        }
+
+        if ($rate && $rate > 0) {
+            return $amount * $rate;
+        }
+
+        return $amount;
     }
 }
