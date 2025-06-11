@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Api\FlightBookingController as BookingController;
 
 // 🌐 Public Homepage
 Route::get('/', function () {

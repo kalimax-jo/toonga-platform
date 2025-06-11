@@ -252,8 +252,12 @@ class DashboardController extends Controller
                     'type' => 'flight',
                     'title' => $this->getFlightTitle($booking),
                     'description' => $this->getFlightDescription($booking),
-                    'price' => $booking->total_amount,
-                    'currency' => $booking->currency_used ?: 'RWF',
+                    'price' => $this->convertToRwf(
+                        $booking->total_price_local,
+                        $booking->currency_used,
+                        $booking->exchange_rate
+                    ),
+                    'currency' => 'RWF',
                     'quantity' => 1,
                     'image' => null,
                     'details' => [
@@ -430,5 +434,21 @@ class DashboardController extends Controller
         } catch (\Exception $e) {
             return 0;
         }
+    }
+
+    /**
+     * Convert an amount to RWF using the provided currency and rate.
+     */
+    private function convertToRwf($amount, $currency, $rate)
+    {
+        if ($currency === 'RWF' || !$currency) {
+            return $amount;
+        }
+
+        if ($rate && $rate > 0) {
+            return $amount * $rate;
+        }
+
+        return $amount;
     }
 }
