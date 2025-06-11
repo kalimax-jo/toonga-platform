@@ -134,7 +134,7 @@ class PaymentController extends Controller
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
             'Content-Type' => 'application/json'
-        ])->post('https://api.flutterwave.com/v3/payments', $paymentData);
+        ])->post(config('services.flutterwave.base_url') . '/v3/payments', $paymentData);
 
         if ($response->successful()) {
             $data = $response->json();
@@ -193,7 +193,7 @@ class PaymentController extends Controller
             // Verify payment with Flutterwave
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . env('FLUTTERWAVE_SECRET_KEY'),
-            ])->get("https://api.flutterwave.com/v3/transactions/{$transactionId}/verify");
+            ])->get(config('services.flutterwave.base_url') . "/v3/transactions/{$transactionId}/verify");
 
             if ($response->successful()) {
                 $data = $response->json();
