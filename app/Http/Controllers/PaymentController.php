@@ -180,11 +180,12 @@ class PaymentController extends Controller
 
     public function handleCallback(Request $request)
     {
-        $transactionId = $request->tx_ref;
+        $txRef = $request->tx_ref; // our generated reference
+        $transactionId = $request->transaction_id; // Flutterwave transaction ID
         $status = $request->status;
 
         Log::info('Payment callback received', [
-            'tx_ref' => $transactionId,
+            'tx_ref' => $txRef,
             'status' => $status,
             'full_request' => $request->all()
         ]);
@@ -201,11 +202,12 @@ class PaymentController extends Controller
                 Log::info('Payment verification response', ['response' => $data]);
                 
                 if (isset($data['data']['status']) && $data['data']['status'] === 'successful') {
-                    // Extract booking reference
-                    $bookingRef = explode('-', $transactionId)[0] . '-' . explode('-', $transactionId)[1];
-                    
+                    // Extract booking reference from our tx_ref
+                    $parts = explode('-', $txRef);
+                    $bookingRef = $parts[0] . '-' . $parts[1];
+
                     $booking = FlightBooking::where('booking_reference', $bookingRef)->first();
-                    $payment = BookingPayment::where('transaction_id', $transactionId)->first();
+                    $payment = BookingPayment::where('transaction_id', $txRef)->first();
 
                     if ($booking && $payment) {
                         // Update booking status
@@ -246,25 +248,25 @@ class PaymentController extends Controller
                     } else {
                         Log::error('Booking or payment not found for successful transaction', [
                             'booking_ref' => $bookingRef,
-                            'tx_ref' => $transactionId
+                            'tx_ref' => $txRef
                         ]);
                     }
                 } else {
                     Log::warning('Payment verification failed - transaction not successful', [
-                        'tx_ref' => $transactionId,
+                        'tx_ref' => $txRef,
                         'response' => $data
                     ]);
                 }
             } else {
                 Log::error('Payment verification request failed', [
-                    'tx_ref' => $transactionId,
+                    'tx_ref' => $txRef,
                     'status' => $response->status(),
                     'response' => $response->body()
                 ]);
             }
         } else {
             Log::warning('Payment callback with non-successful status', [
-                'tx_ref' => $transactionId,
+                'tx_ref' => $txRef,
                 'status' => $status
             ]);
         }
