@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Product;
 use App\Models\Category;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DashboardController;
 
 // 🌐 Public Homepage
 Route::get('/', function () {
@@ -253,6 +254,31 @@ Route::get('/test-amadeus', function() {
         'app_debug' => env('APP_DEBUG'),
     ]);
 });
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/cart', [DashboardController::class, 'cart'])->name('dashboard.cart');
+    Route::get('/dashboard/orders', [DashboardController::class, 'orders'])->name('dashboard.orders');
+    Route::get('/dashboard/miles', [DashboardController::class, 'miles'])->name('dashboard.miles');
+    Route::get('/dashboard/wishlist', [DashboardController::class, 'wishlist'])->name('dashboard.wishlist');
+    Route::get('/dashboard/profile', [DashboardController::class, 'profile'])->name('dashboard.profile');
+});
+
+
+use App\Http\Controllers\PaymentController;
+
+// Test split payment route
+Route::get('/test-split/{bookingReference}', [PaymentController::class, 'testSplitPayment']);
+// Add these routes for cart functionality
+Route::middleware(['auth'])->group(function () {
+    // Existing dashboard routes...
+    
+    // Cart management routes
+    Route::delete('/bookings/{booking}', [BookingController::class, 'cancel'])->name('bookings.cancel');
+    Route::delete('/cart/clear', [DashboardController::class, 'clearCart'])->name('cart.clear');
+    Route::post('/checkout', [CheckoutController::class, 'process'])->name('checkout.process');
+});
+
 
 
 require __DIR__.'/auth.php';

@@ -141,8 +141,57 @@ Route::middleware(['auth'])->group(function () {
 });
 
 
+Route::middleware('auth:sanctum')->group(function () {
+    // Dashboard API endpoints
+    Route::get('/dashboard/stats', [DashboardController::class, 'getStats']);
+    
+    // Cart management
+    Route::prefix('cart')->group(function () {
+        Route::get('/', [CartController::class, 'index']);
+        Route::post('/add', [CartController::class, 'add']);
+        Route::patch('/update/{id}', [CartController::class, 'update']);
+        Route::delete('/remove/{id}', [CartController::class, 'remove']);
+        Route::delete('/clear', [CartController::class, 'clear']);
+    });
+    
+    // Wishlist management
+    Route::prefix('wishlist')->group(function () {
+        Route::get('/', [WishlistController::class, 'index']);
+        Route::post('/add', [WishlistController::class, 'add']);
+        Route::delete('/remove/{id}', [WishlistController::class, 'remove']);
+        Route::post('/move-to-cart/{id}', [WishlistController::class, 'moveToCart']);
+    });
+    
+    // Miles management
+    Route::prefix('miles')->group(function () {
+        Route::get('/balance', [MilesController::class, 'balance']);
+        Route::get('/history', [MilesController::class, 'history']);
+        Route::post('/redeem', [MilesController::class, 'redeem']);
+        Route::post('/transfer', [MilesController::class, 'transfer']);
+    });
+    
+    // Profile management
+    Route::prefix('profile')->group(function () {
+        Route::patch('/update', [ProfileController::class, 'update']);
+        Route::post('/avatar', [ProfileController::class, 'updateAvatar']);
+        Route::patch('/notifications', [ProfileController::class, 'updateNotifications']);
+        Route::patch('/preferences', [ProfileController::class, 'updatePreferences']);
+        Route::post('/change-password', [ProfileController::class, 'changePassword']);
+    });
+    
+    // Payment methods
+    Route::prefix('payment-methods')->group(function () {
+        Route::get('/', [PaymentMethodController::class, 'index']);
+        Route::post('/', [PaymentMethodController::class, 'store']);
+        Route::delete('/{id}', [PaymentMethodController::class, 'destroy']);
+        Route::patch('/{id}/default', [PaymentMethodController::class, 'setDefault']);
+    });
+});
+
 
 // 🚀 Test API
 Route::get('/test-api', fn () => response()->json(['message' => 'API is working']));
 Route::get('/test-flight-search', [\App\Http\Controllers\Api\TestFlightController::class, 'search']);
+use App\Http\Controllers\PaymentController;
+Route::get('/test-split/{bookingReference}', [PaymentController::class, 'testSplitPayment']);
 

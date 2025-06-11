@@ -10,6 +10,7 @@ use App\Models\BookingPayment;
 use App\Models\Miles;
 use App\Models\User;
 use Inertia\Inertia;
+use App\Models\Product;
 
 class PaymentController extends Controller
 {
@@ -36,54 +37,101 @@ class PaymentController extends Controller
             'status' => 'pending'
         ]);
 
-        // Get vendor for split payment - with safe null checking
-        $vendor = null;
-        $commissionPercentage = $booking->commission_percentage ?? 10;
+        // Get vendor and admin subaccounts
+$vendor = null;
+$adminUser = null;
+$product = null;
+$commissionPercentage = 10; // Default fallback
 
-        // Try to get vendor from product relationship first
-        if ($booking->product && $booking->product->vendor) {
-            $vendor = $booking->product->vendor;
-            Log::info('Vendor found via product relationship', [
+// Get admin/toonga subaccount
+$adminUser = User::where('role', 'admin')
+    ->whereNotNull('subaccount_id')
+    ->first();
+
+// Try to get vendor from product relationship first
+if ($booking->product && $booking->product->vendor) {
+    $vendor = $booking->product->vendor;
+    $product = $booking->product;
+    $commissionPercentage = $product->commission; // Get commission from product table
+    
+    Log::info('Vendor found via product relationship', [
+        'vendor' => $vendor->name,
+        'product_id' => $product->id,
+        'commission_from_product' => $commissionPercentage,
+        'booking' => $booking->booking_reference
+    ]);
+} else {
+    // Fallback: find vendor by airline code
+    $vendor = User::where('carrier_code', $booking->airline_code)
+        ->where('role', 'vendor')
+        ->where('is_approved', true)
+        ->whereNotNull('subaccount_id')
+        ->first();
+    
+    if ($vendor) {
+        // Try to find matching product for this vendor and get commission
+        $product = Product::where('vendor_id', $vendor->id)
+            ->where('category_id', 1) // Flight category
+            ->where('is_approved', true)
+            ->first();
+        
+        if ($product) {
+            $commissionPercentage = $product->commission;
+            Log::info('Found product for vendor fallback', [
                 'vendor' => $vendor->name,
-                'booking' => $booking->booking_reference
-            ]);
-        } else {
-            // Fallback: find vendor by airline code
-            $vendor = User::where('carrier_code', $booking->airline_code)
-                ->where('role', 'vendor')
-                ->where('is_approved', true)
-                ->first();
-            
-            Log::warning('Using fallback vendor lookup', [
-                'booking_reference' => $booking->booking_reference,
-                'airline_code' => $booking->airline_code,
-                'vendor_found' => $vendor ? $vendor->name : 'None'
+                'product_id' => $product->id,
+                'commission_from_product' => $commissionPercentage
             ]);
         }
+    }
+    
+    Log::warning('Using fallback vendor lookup', [
+        'booking_reference' => $booking->booking_reference,
+        'airline_code' => $booking->airline_code,
+        'vendor_found' => $vendor ? $vendor->name : 'None',
+        'product_found' => $product ? 'Yes' : 'No',
+        'commission_used' => $commissionPercentage
+    ]);
+}
 
-        // Prepare split payment configuration
-        $splitConfig = [];
-        if ($vendor && $vendor->subaccount_id) {
-            $splitConfig = [
-                [
-                    'id' => $vendor->subaccount_id,
-                    'transaction_split_ratio' => (100 - $commissionPercentage)
-                ]
-            ];
-            
-            Log::info('Split payment configured', [
-                'vendor' => $vendor->name,
-                'subaccount' => $vendor->subaccount_id,
-                'commission' => $commissionPercentage,
-                'vendor_percentage' => (100 - $commissionPercentage)
-            ]);
-        } else {
-            Log::warning('No split payment - proceeding with full payment to platform', [
-                'vendor_exists' => $vendor ? 'Yes' : 'No',
-                'subaccount_exists' => $vendor && isset($vendor->subaccount_id) ? 'Yes' : 'No',
-                'booking' => $booking->booking_reference
-            ]);
-        }
+// Prepare split payment configuration
+$splitConfig = [];
+
+// Only proceed with split if we have both admin and vendor subaccounts
+if ($vendor && $vendor->subaccount_id && $adminUser && $adminUser->subaccount_id) {
+    $vendorPercentage = 100 - $commissionPercentage; // e.g., 80% if commission is 20%
+    $toognaPercentage = $commissionPercentage; // e.g., 20%
+    
+    $splitConfig = [
+        [
+            'id' => $vendor->subaccount_id,
+            'transaction_split_ratio' => $vendorPercentage
+        ],
+        [
+            'id' => $adminUser->subaccount_id,
+            'transaction_split_ratio' => $toognaPercentage
+        ]
+    ];
+    
+    Log::info('Split payment configured with product commission', [
+        'vendor' => $vendor->name,
+        'vendor_subaccount' => $vendor->subaccount_id,
+        'vendor_percentage' => $vendorPercentage,
+        'toonga_subaccount' => $adminUser->subaccount_id,
+        'toonga_percentage' => $toognaPercentage,
+        'commission_from_product' => $commissionPercentage,
+        'product_id' => $product ? $product->id : 'None',
+        'booking' => $booking->booking_reference
+    ]);
+} else {
+    Log::warning('Cannot configure split payment - missing subaccounts', [
+        'vendor_exists' => $vendor ? 'Yes' : 'No',
+        'vendor_subaccount' => $vendor ? $vendor->subaccount_id ?? 'Missing' : 'N/A',
+        'admin_subaccount' => $adminUser ? $adminUser->subaccount_id ?? 'Missing' : 'No admin found',
+        'product_commission' => $product ? $product->commission : 'No product',
+        'booking' => $booking->booking_reference
+    ]);
+}
 
         // Convert to RWF if needed (since Flutterwave account is RWF)
         $amountRWF = $booking->total_price_local;
@@ -288,4 +336,98 @@ class PaymentController extends Controller
     {
         return Inertia::render('Booking/Failed');
     }
+
+    public function testSplitPayment($bookingReference)
+{
+    $booking = FlightBooking::where('booking_reference', $bookingReference)
+        ->with(['product.vendor'])
+        ->first();
+    
+    if (!$booking) {
+        return response()->json(['error' => 'Booking not found']);
+    }
+    
+    // Get admin user
+    $adminUser = User::where('role', 'admin')
+        ->whereNotNull('subaccount_id')
+        ->first();
+    
+    // Get vendor
+    $vendor = null;
+    $product = null;
+    $commissionPercentage = 10;
+    
+    if ($booking->product && $booking->product->vendor) {
+        $vendor = $booking->product->vendor;
+        $product = $booking->product;
+        $commissionPercentage = $product->commission;
+    } else {
+        $vendor = User::where('carrier_code', $booking->airline_code)
+            ->where('role', 'vendor')
+            ->where('is_approved', true)
+            ->whereNotNull('subaccount_id')
+            ->first();
+        
+        if ($vendor) {
+            $product = Product::where('vendor_id', $vendor->id)
+                ->where('category_id', 1)
+                ->where('is_approved', true)
+                ->first();
+            
+            if ($product) {
+                $commissionPercentage = $product->commission;
+            }
+        }
+    }
+    
+    // Calculate amounts
+    $totalAmountRWF = $booking->total_price_local * $booking->exchange_rate;
+    $vendorPercentage = 100 - $commissionPercentage;
+    $vendorAmount = $totalAmountRWF * ($vendorPercentage / 100);
+    $toognaAmount = $totalAmountRWF * ($commissionPercentage / 100);
+    
+    // Check if split payment would be configured
+    $canSplit = $vendor && $vendor->subaccount_id && $adminUser && $adminUser->subaccount_id;
+    
+    return response()->json([
+        'booking_reference' => $booking->booking_reference,
+        'total_amount_eur' => $booking->total_price_eur,
+        'total_amount_rwf' => $totalAmountRWF,
+        'exchange_rate' => $booking->exchange_rate,
+        'split_payment_possible' => $canSplit,
+        'commission_source' => $product ? 'Product table' : 'Default',
+        'commission_percentage' => $commissionPercentage,
+        'vendor' => [
+            'found' => $vendor ? true : false,
+            'name' => $vendor ? $vendor->name : 'Not found',
+            'carrier_code' => $vendor ? $vendor->carrier_code : 'N/A',
+            'subaccount_id' => $vendor ? $vendor->subaccount_id : 'Missing',
+            'percentage' => $vendorPercentage,
+            'amount_rwf' => round($vendorAmount, 2)
+        ],
+        'toonga' => [
+            'found' => $adminUser ? true : false,
+            'name' => $adminUser ? $adminUser->name : 'Not found',
+            'subaccount_id' => $adminUser ? $adminUser->subaccount_id : 'Missing',
+            'percentage' => $commissionPercentage,
+            'amount_rwf' => round($toognaAmount, 2)
+        ],
+        'product_info' => $product ? [
+            'id' => $product->id,
+            'title' => $product->title,
+            'commission' => $product->commission,
+            'vendor_id' => $product->vendor_id
+        ] : 'No product found',
+        'flutterwave_split_config' => $canSplit ? [
+            [
+                'id' => $vendor->subaccount_id,
+                'transaction_split_ratio' => $vendorPercentage
+            ],
+            [
+                'id' => $adminUser->subaccount_id,
+                'transaction_split_ratio' => $commissionPercentage
+            ]
+        ] : 'Split not possible - missing subaccounts'
+    ]);
+}
 }
